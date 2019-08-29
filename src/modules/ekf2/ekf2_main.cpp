@@ -274,7 +274,6 @@ private:
 
 	// because we can have multiple GPS instances
 	uORB::Subscription _gps_subs[GPS_MAX_RECEIVERS] {{ORB_ID(vehicle_gps_position), 0}, {ORB_ID(vehicle_gps_position), 1}};
-	int _gps_orb_instance{ -1};
 
 	uORB::Publication<ekf2_innovations_s>			_estimator_innovations_pub{ORB_ID(ekf2_innovations)};
 	uORB::Publication<ekf2_timestamps_s>			_ekf2_timestamps_pub{ORB_ID(ekf2_timestamps)};
@@ -2423,15 +2422,14 @@ timestamps from the sensor topics.
 
 int Ekf2::task_spawn(int argc, char *argv[])
 {
-	_task_id = px4_task_spawn_cmd("ekf2",
+	int task_id = px4_task_spawn_cmd("ekf2",
 				      SCHED_DEFAULT,
 				      SCHED_PRIORITY_ESTIMATOR,
 				      6600,
 				      (px4_main_t)&run_trampoline,
 				      (char *const *)argv);
 
-	if (_task_id < 0) {
-		_task_id = -1;
+	if (task_id < 0) {
 		return -errno;
 	}
 

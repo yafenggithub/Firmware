@@ -138,7 +138,7 @@ class Sensors : public ModuleBase<Sensors>, public ModuleParams
 {
 public:
 	Sensors(bool hil_enabled);
-	~Sensors() override;
+	virtual ~Sensors() override;
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -267,6 +267,8 @@ Sensors::~Sensors()
 {
 	_vehicle_acceleration.Stop();
 	_vehicle_angular_velocity.Stop();
+
+	perf_free(_loop_perf);
 }
 
 int
@@ -700,15 +702,14 @@ Sensors::run()
 int Sensors::task_spawn(int argc, char *argv[])
 {
 	/* start the task */
-	_task_id = px4_task_spawn_cmd("sensors",
-				      SCHED_DEFAULT,
-				      SCHED_PRIORITY_SENSOR_HUB,
-				      2000,
-				      (px4_main_t)&run_trampoline,
-				      (char *const *)argv);
+	int task_id = px4_task_spawn_cmd("sensors",
+					 SCHED_DEFAULT,
+					 SCHED_PRIORITY_SENSOR_HUB,
+					 2000,
+					 (px4_main_t)&run_trampoline,
+					 (char *const *)argv);
 
-	if (_task_id < 0) {
-		_task_id = -1;
+	if (task_id < 0) {
 		return -errno;
 	}
 

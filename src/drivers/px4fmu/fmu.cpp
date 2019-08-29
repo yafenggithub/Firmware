@@ -136,6 +136,8 @@ public:
 
 	void Run() override;
 
+	void request_stop() override { _task_should_exit.store(true); ScheduleNow(); }
+
 	/** @see ModuleBase::print_status() */
 	int print_status() override;
 
@@ -675,8 +677,7 @@ PX4FMU::task_spawn(int argc, char *argv[])
 	PX4FMU *instance = new PX4FMU();
 
 	if (instance) {
-		_object.store(instance);
-		_task_id = task_id_is_work_queue;
+		instance->set_task_id(task_id_is_work_queue);
 
 		if (instance->init() == PX4_OK) {
 			return PX4_OK;
@@ -687,8 +688,6 @@ PX4FMU::task_spawn(int argc, char *argv[])
 	}
 
 	delete instance;
-	_object.store(nullptr);
-	_task_id = -1;
 
 	return PX4_ERROR;
 }

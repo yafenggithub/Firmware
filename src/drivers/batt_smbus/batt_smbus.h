@@ -283,6 +283,8 @@ private:
 
 	void Run() override;
 
+	void request_stop() override { _task_should_exit.store(true); ScheduleNow(); }
+
 	perf_counter_t _cycle;
 
 	float _cell_voltages[4] = {};

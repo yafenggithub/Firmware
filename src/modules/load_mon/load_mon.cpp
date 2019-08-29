@@ -95,6 +95,8 @@ private:
 	/** Do a compute and schedule the next cycle. */
 	void Run() override;
 
+	void request_stop() override { _task_should_exit.store(true); ScheduleNow(); }
+
 	/** Do a calculation of the CPU load and publish it. */
 	void _cpuload();
 
@@ -144,8 +146,7 @@ int LoadMon::task_spawn(int argc, char *argv[])
 		return -1;
 	}
 
-	_object.store(obj);
-	_task_id = task_id_is_work_queue;
+	obj->set_task_id(task_id_is_work_queue);
 
 	/* Schedule a cycle to start things. */
 	obj->start();

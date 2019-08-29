@@ -130,7 +130,7 @@ class FixedwingPositionControl final : public ModuleBase<FixedwingPositionContro
 {
 public:
 	FixedwingPositionControl();
-	~FixedwingPositionControl() override;
+	virtual ~FixedwingPositionControl() override;
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -142,6 +142,8 @@ public:
 	static int print_usage(const char *reason = nullptr);
 
 	void Run() override;
+
+	void request_stop() override { _task_should_exit.store(true); ScheduleNow(); }
 
 	bool init();
 

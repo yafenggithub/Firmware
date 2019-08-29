@@ -90,6 +90,8 @@ public:
 	/* run the main loop */
 	void Run() override;
 
+	void request_stop() override { _task_should_exit.store(true); ScheduleNow(); }
+
 	int print_status() override;
 
 private:
@@ -202,11 +204,9 @@ AirspeedModule::task_spawn(int argc, char *argv[])
 		return PX4_ERROR;
 	}
 
-	_object.store(dev);
-
 	if (dev) {
+		dev->set_task_id(task_id_is_work_queue);
 		dev->ScheduleOnInterval(SCHEDULE_INTERVAL, 10000);
-		_task_id = task_id_is_work_queue;
 		return PX4_OK;
 	}
 
