@@ -71,6 +71,7 @@ private:
 	void	ParametersUpdate(bool force = false);
 	void	SensorBiasUpdate(bool force = false);
 	bool	SensorCorrectionsUpdate(bool force = false);
+	bool	SensorSelectionUpdate(bool force = false);
 
 	static constexpr int MAX_SENSOR_COUNT = 3;
 
@@ -89,6 +90,7 @@ private:
 	uORB::Subscription			_sensor_correction_sub{ORB_ID(sensor_correction)};	/**< sensor thermal correction subscription */
 
 	uORB::SubscriptionCallbackWorkItem	_sensor_selection_sub{this, ORB_ID(sensor_selection)};	/**< selected primary sensor subscription */
+
 	uORB::SubscriptionCallbackWorkItem	_sensor_sub[MAX_SENSOR_COUNT] {				/**< sensor data subscription */
 		{this, ORB_ID(sensor_accel), 0},
 		{this, ORB_ID(sensor_accel), 1},
@@ -104,6 +106,8 @@ private:
 	perf_counter_t				_cycle_perf;
 	perf_counter_t				_sensor_latency_perf;
 
-	uint8_t					_selected_sensor{0};
+	uint32_t				_selected_sensor_device_id{0};
+	int8_t					_selected_sensor_index{-1};
+	int8_t					_sensor_correction_index{-1};
 
 };

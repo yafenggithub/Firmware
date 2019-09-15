@@ -52,6 +52,7 @@ px4_add_board(
 		navigator
 		battery_status
 		sensors
+		temperature_compensation
 		sih
 		#simulator
 		vmount

@@ -72,6 +72,7 @@ private:
 	void	ParametersUpdate(bool force = false);
 	void	SensorBiasUpdate(bool force = false);
 	bool	SensorCorrectionsUpdate(bool force = false);
+	bool	SensorSelectionUpdate(bool force = false);
 
 	static constexpr int MAX_SENSOR_COUNT = 3;
 
@@ -113,8 +114,8 @@ private:
 	perf_counter_t				_sensor_latency_perf;
 
 	uint32_t				_selected_sensor_device_id{0};
-	uint8_t					_selected_sensor{0};
-	uint8_t					_selected_sensor_control{0};
+	int8_t					_selected_sensor_index{-1};
+	int8_t					_sensor_correction_index{-1};
 	bool					_sensor_control_available{false};
 
 };

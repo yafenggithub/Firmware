@@ -56,6 +56,7 @@ px4_add_board(
 		navigator
 		battery_status
 		sensors
+		temperature_compensation
 		sih
 		vmount
 		#vtol_att_control

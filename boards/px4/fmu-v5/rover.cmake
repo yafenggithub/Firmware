@@ -46,19 +46,20 @@ px4_add_board(
 		uavcan
 
 	MODULES
+		battery_status
 		camera_feedback
 		commander
 		dataman
 		ekf2
 		events
-		rover_pos_control
 		land_detector
 		load_mon
 		logger
 		mavlink
 		navigator
-		battery_status
+		rover_pos_control
 		sensors
+		temperature_compensation
 		vmount
 
 	SYSTEMCMDS
