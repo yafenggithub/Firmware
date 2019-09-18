@@ -82,24 +82,17 @@ bool module_running(const char *name)
  */
 int module_wait_until_running(const char *name)
 {
-	int i = 0;
-
-	ModuleBaseInterface *object = nullptr;
-
-	do {
-		object = get_module_instance(name);
+	for (int i = 0; i < 400; ++i) {
+		if (get_module_instance(name) != nullptr) {
+			return PX4_OK;
+		}
 
 		// Wait up to 1 s
 		px4_usleep(2500);
-
-	} while (!object && ++i < 400);
-
-	if (i == 400) {
-		PX4_ERR("Timed out while waiting for thread to start");
-		return -1;
 	}
 
-	return 0;
+	PX4_ERR("Timed out while waiting for thread to start");
+	return PX4_ERROR;
 }
 
 int module_stop(const char *name)
