@@ -328,7 +328,7 @@ CameraCapture::status()
 {
 	PX4_INFO("Capture enabled : %s", _capture_enabled ? "YES" : "NO");
 	PX4_INFO("Frame sequence : %u", _capture_seq);
-	PX4_INFO("Last trigger timestamp : %llu", _last_trig_time);
+	PX4_INFO("Last trigger timestamp : %" PRIu64 "", _last_trig_time);
 
 	if (_camera_capture_mode != 0) {
 		PX4_INFO("Last exposure time : %0.2f ms", double(_last_exposure_time) / 1000.0);

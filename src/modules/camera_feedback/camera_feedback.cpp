@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,242 +41,143 @@
 
 #include "camera_feedback.hpp"
 
-namespace camera_feedback
-{
-CameraFeedback	*g_camera_feedback;
-}
-
 CameraFeedback::CameraFeedback() :
-	_task_should_exit(false),
-	_main_task(-1),
-	_trigger_sub(-1),
-	_gpos_sub(-1),
-	_att_sub(-1),
-	_capture_pub(nullptr),
-	_camera_capture_feedback(false)
+	ModuleParams(nullptr),
+	WorkItem(MODULE_NAME, px4::wq_configurations::hp_default)
 {
-
-	// Parameters
-	_p_camera_capture_feedback = param_find("CAM_CAP_FBACK");
-
-	param_get(_p_camera_capture_feedback, (int32_t *)&_camera_capture_feedback);
-
+	updateParams();
 }
 
 CameraFeedback::~CameraFeedback()
 {
-
-	if (_main_task != -1) {
-
-		/* task wakes up every 100ms or so at the longest */
-		_task_should_exit = true;
-
-		/* wait for a second for the task to quit at our request */
-		unsigned i = 0;
-
-		do {
-			/* wait 20ms */
-			px4_usleep(20000);
-
-			/* if we have given up, kill it */
-			if (++i > 50) {
-				px4_task_delete(_main_task);
-				break;
-			}
-		} while (_main_task != -1);
-	}
-
-	camera_feedback::g_camera_feedback = nullptr;
 }
 
-int
-CameraFeedback::start()
+bool
+CameraFeedback::init()
 {
-
-	/* start the task */
-	_main_task = px4_task_spawn_cmd("camera_feedback",
-					SCHED_DEFAULT,
-					SCHED_PRIORITY_DEFAULT + 15,
-					1600,
-					(px4_main_t)&CameraFeedback::task_main_trampoline,
-					nullptr);
-
-	if (_main_task < 0) {
-		warn("task start failed");
-		return -errno;
+	if (!_trigger_sub.registerCallback()) {
+		PX4_ERR("camera_trigger callback registration failed!");
+		return false;
 	}
 
-	return OK;
-
+	return true;
 }
 
 void
-CameraFeedback::stop()
+CameraFeedback::Run()
 {
-	if (camera_feedback::g_camera_feedback != nullptr) {
-		delete (camera_feedback::g_camera_feedback);
+	if (should_exit()) {
+		_trigger_sub.unregisterCallback();
+		exit_and_cleanup();
+		return;
+	}
+
+	camera_trigger_s trig{};
+
+	if (_trigger_sub.update(&trig)) {
+
+		// update geotagging subscriptions
+		vehicle_global_position_s gpos{};
+		_gpos_sub.copy(&gpos);
+
+		vehicle_attitude_s att{};
+		_att_sub.copy(&att);
+
+		if (trig.timestamp == 0 ||
+		    gpos.timestamp == 0 ||
+		    att.timestamp == 0) {
+			// reject until we have valid data
+			return;
+		}
+
+		camera_capture_s capture{};
+
+		// Fill timestamps
+		capture.timestamp = trig.timestamp;
+		capture.timestamp_utc = trig.timestamp_utc;
+
+		// Fill image sequence
+		capture.seq = trig.seq;
+
+		// Fill position data
+		capture.lat = gpos.lat;
+		capture.lon = gpos.lon;
+		capture.alt = gpos.alt;
+
+		capture.ground_distance = gpos.terrain_alt_valid ? (gpos.alt - gpos.terrain_alt) : -1.0f;
+
+		// Fill attitude data
+		// TODO : this needs to be rotated by camera orientation or set to gimbal orientation when available
+		capture.q[0] = att.q[0];
+		capture.q[1] = att.q[1];
+		capture.q[2] = att.q[2];
+		capture.q[3] = att.q[3];
+
+		// Indicate whether capture feedback from camera is available
+		// What is case 0 for capture.result?
+		if (!_param_camera_capture_feedback.get()) {
+			capture.result = -1;
+
+		} else {
+			capture.result = 1;
+		}
+
+		_capture_pub.publish(capture);
 	}
 }
 
-
-void
-CameraFeedback::task_main()
+int CameraFeedback::task_spawn(int argc, char *argv[])
 {
-	_trigger_sub = orb_subscribe(ORB_ID(camera_trigger));
+	CameraFeedback *instance = new CameraFeedback();
 
-	// Polling sources
-	struct camera_trigger_s trig = {};
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
 
-	px4_pollfd_struct_t fds[1] = {};
-	fds[0].fd = _trigger_sub;
-	fds[0].events = POLLIN;
-
-	// Geotagging subscriptions
-	_gpos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
-	_att_sub = orb_subscribe(ORB_ID(vehicle_attitude));
-	struct vehicle_global_position_s gpos = {};
-	struct vehicle_attitude_s att = {};
-
-	bool updated = false;
-
-	while (!_task_should_exit) {
-
-		/* wait for up to 20ms for data */
-		int pret = px4_poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 20);
-
-		if (pret < 0) {
-			PX4_WARN("poll error %d, %d", pret, errno);
-			continue;
+		if (instance->init()) {
+			return PX4_OK;
 		}
-
-		/* trigger subscription updated */
-		if (fds[0].revents & POLLIN) {
-
-			orb_copy(ORB_ID(camera_trigger), _trigger_sub, &trig);
-
-			/* update geotagging subscriptions */
-			orb_check(_gpos_sub, &updated);
-
-			if (updated) {
-				orb_copy(ORB_ID(vehicle_global_position), _gpos_sub, &gpos);
-			}
-
-			orb_check(_att_sub, &updated);
-
-			if (updated) {
-				orb_copy(ORB_ID(vehicle_attitude), _att_sub, &att);
-			}
-
-			if (trig.timestamp == 0 ||
-			    gpos.timestamp == 0 ||
-			    att.timestamp == 0) {
-				// reject until we have valid data
-				continue;
-			}
-
-			struct camera_capture_s capture = {};
-
-			// Fill timestamps
-			capture.timestamp = trig.timestamp;
-
-			capture.timestamp_utc = trig.timestamp_utc;
-
-			// Fill image sequence
-			capture.seq = trig.seq;
-
-			// Fill position data
-			capture.lat = gpos.lat;
-
-			capture.lon = gpos.lon;
-
-			capture.alt = gpos.alt;
-
-			capture.ground_distance = gpos.terrain_alt_valid ? (gpos.alt - gpos.terrain_alt) : -1.0f;
-
-			// Fill attitude data
-			// TODO : this needs to be rotated by camera orientation or set to gimbal orientation when available
-			capture.q[0] = att.q[0];
-
-			capture.q[1] = att.q[1];
-
-			capture.q[2] = att.q[2];
-
-			capture.q[3] = att.q[3];
-
-			// Indicate whether capture feedback from camera is available
-			// What is case 0 for capture.result?
-			if (!_camera_capture_feedback) {
-				capture.result = -1;
-
-			} else {
-				capture.result = 1;
-			}
-
-			int instance_id;
-
-			orb_publish_auto(ORB_ID(camera_capture), &_capture_pub, &capture, &instance_id, ORB_PRIO_DEFAULT);
-
-		}
-
-	}
-
-	orb_unsubscribe(_trigger_sub);
-	orb_unsubscribe(_gpos_sub);
-	orb_unsubscribe(_att_sub);
-
-	_main_task = -1;
-
-}
-
-int
-CameraFeedback::task_main_trampoline(int argc, char *argv[])
-{
-	camera_feedback::g_camera_feedback->task_main();
-	return 0;
-}
-
-static int usage()
-{
-	PX4_INFO("usage: camera_feedback {start|stop}\n");
-	return 1;
-}
-
-extern "C" __EXPORT int camera_feedback_main(int argc, char *argv[]);
-
-int camera_feedback_main(int argc, char *argv[])
-{
-	if (argc < 2) {
-		return usage();
-	}
-
-	if (!strcmp(argv[1], "start")) {
-
-		if (camera_feedback::g_camera_feedback != nullptr) {
-			PX4_WARN("already running");
-			return 0;
-		}
-
-		camera_feedback::g_camera_feedback = new CameraFeedback();
-
-		if (camera_feedback::g_camera_feedback == nullptr) {
-			PX4_WARN("alloc failed");
-			return 1;
-		}
-
-		camera_feedback::g_camera_feedback->start();
-		return 0;
-	}
-
-	if (camera_feedback::g_camera_feedback == nullptr) {
-		PX4_WARN("not running");
-		return 1;
-
-	} else if (!strcmp(argv[1], "stop")) {
-		camera_feedback::g_camera_feedback->stop();
 
 	} else {
-		return usage();
+		PX4_ERR("alloc failed");
 	}
 
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
+
+	return PX4_ERROR;
+}
+
+int
+CameraFeedback::custom_command(int argc, char *argv[])
+{
+	return print_usage("unknown command");
+}
+
+int
+CameraFeedback::print_usage(const char *reason)
+{
+	if (reason) {
+		PX4_WARN("%s\n", reason);
+	}
+
+	PRINT_MODULE_DESCRIPTION(
+		R"DESCR_STR(
+### Description
+
+
+)DESCR_STR");
+
+	PRINT_MODULE_USAGE_NAME(MODULE_NAME, "system");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+
 	return 0;
+}
+
+extern "C" __EXPORT int
+camera_feedback_main(int argc, char *argv[])
+{
+	return CameraFeedback::main(argc, argv);
 }
