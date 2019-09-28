@@ -61,11 +61,21 @@
 
 using namespace matrix;
 
-MulticopterAttitudeControl::MulticopterAttitudeControl() :
+MulticopterAttitudeControl::MulticopterAttitudeControl(bool vtol) :
 	ModuleParams(nullptr),
 	WorkItem(px4::wq_configurations::rate_ctrl),
+	_actuators_0_pub(vtol ? ORB_ID(actuator_controls_virtual_mc) : ORB_ID(actuator_controls_0)),
+	_vehicle_attitude_setpoint_pub(vtol ? ORB_ID(mc_virtual_attitude_setpoint) : ORB_ID(vehicle_attitude_setpoint)),
 	_loop_perf(perf_alloc(PC_ELAPSED, "mc_att_control"))
 {
+	if (vtol) {
+		int32_t vt_type = -1;
+
+		if (param_get(param_find("VT_TYPE"), &vt_type) == PX4_OK) {
+			_is_tailsitter = (static_cast<vtol_type>(vt_type) == vtol_type::TAILSITTER);
+		}
+	}
+
 	_vehicle_status.vehicle_type = vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
 
 	/* initialize quaternions in messages to be valid */
@@ -145,31 +155,6 @@ MulticopterAttitudeControl::parameter_update_poll()
 
 		// update parameters from storage
 		parameters_updated();
-	}
-}
-
-void
-MulticopterAttitudeControl::vehicle_status_poll()
-{
-	/* check if there is new status information */
-	if (_vehicle_status_sub.update(&_vehicle_status)) {
-		/* set correct uORB ID, depending on if vehicle is VTOL or not */
-		if (_actuators_id == nullptr) {
-			if (_vehicle_status.is_vtol) {
-				_actuators_id = ORB_ID(actuator_controls_virtual_mc);
-				_attitude_sp_id = ORB_ID(mc_virtual_attitude_setpoint);
-
-				int32_t vt_type = -1;
-
-				if (param_get(param_find("VT_TYPE"), &vt_type) == PX4_OK) {
-					_is_tailsitter = (static_cast<vtol_type>(vt_type) == vtol_type::TAILSITTER);
-				}
-
-			} else {
-				_actuators_id = ORB_ID(actuator_controls_0);
-				_attitude_sp_id = ORB_ID(vehicle_attitude_setpoint);
-			}
-		}
 	}
 }
 
@@ -342,9 +327,7 @@ MulticopterAttitudeControl::generate_attitude_setpoint(float dt, bool reset_yaw_
 	attitude_setpoint.thrust_body[2] = -throttle_curve(_manual_control_sp.z);
 	attitude_setpoint.timestamp = hrt_absolute_time();
 
-	if (_attitude_sp_id != nullptr) {
-		orb_publish_auto(_attitude_sp_id, &_vehicle_attitude_setpoint_pub, &attitude_setpoint, nullptr, ORB_PRIO_DEFAULT);
-	}
+	_vehicle_attitude_setpoint_pub.publish(attitude_setpoint);
 
 	_landing_gear.landing_gear = get_landing_gear_state();
 	_landing_gear.timestamp = hrt_absolute_time();
@@ -514,7 +497,7 @@ MulticopterAttitudeControl::publish_actuator_controls()
 	}
 
 	if (!_actuators_0_circuit_breaker_enabled) {
-		orb_publish_auto(_actuators_id, &_actuators_0_pub, &_actuators, nullptr, ORB_PRIO_DEFAULT);
+		_actuators_0_pub.publish(_actuators);
 	}
 }
 
@@ -556,7 +539,7 @@ MulticopterAttitudeControl::Run()
 		_battery_status_sub.update(&_battery_status);
 		_vehicle_land_detected_sub.update(&_vehicle_land_detected);
 		_landing_gear_sub.update(&_landing_gear);
-		vehicle_status_poll();
+		_vehicle_status_sub.update(&_vehicle_status);
 		vehicle_motor_limits_poll();
 		const bool manual_control_updated = _manual_control_sp_sub.update(&_manual_control_sp);
 		const bool attitude_updated = vehicle_attitude_poll();
@@ -673,7 +656,15 @@ MulticopterAttitudeControl::Run()
 
 int MulticopterAttitudeControl::task_spawn(int argc, char *argv[])
 {
-	MulticopterAttitudeControl *instance = new MulticopterAttitudeControl();
+	bool vtol = false;
+
+	if (argc > 1) {
+		if (strcmp(argv[1], "vtol") == 0) {
+			vtol = true;
+		}
+	}
+
+	MulticopterAttitudeControl *instance = new MulticopterAttitudeControl(vtol);
 
 	if (instance) {
 		_object.store(instance);
@@ -739,6 +730,7 @@ To reduce control latency, the module directly polls on the gyro topic published
 
 	PRINT_MODULE_USAGE_NAME("mc_att_control", "controller");
 	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_ARG("vtol", "VTOL mode", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;

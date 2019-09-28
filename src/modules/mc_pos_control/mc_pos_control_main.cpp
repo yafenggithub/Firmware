@@ -83,8 +83,7 @@ class MulticopterPositionControl : public ModuleBase<MulticopterPositionControl>
 	public ModuleParams
 {
 public:
-	MulticopterPositionControl();
-
+	MulticopterPositionControl(bool vtol = false);
 	~MulticopterPositionControl();
 
 	/** @see ModuleBase */
@@ -108,11 +107,9 @@ public:
 private:
 	Takeoff _takeoff; /**< state machine and ramp to bring the vehicle off the ground without jumps */
 
-	orb_advert_t	_att_sp_pub{nullptr};			/**< attitude setpoint publication */
+	uORB::Publication<vehicle_attitude_setpoint_s>	_att_sp_pub;			/**< attitude setpoint publication */
 	uORB::PublicationQueued<vehicle_command_s> _pub_vehicle_command{ORB_ID(vehicle_command)};	 /**< vehicle command publication */
 	orb_advert_t _mavlink_log_pub{nullptr};
-
-	orb_id_t _attitude_setpoint_id{nullptr};
 
 	uORB::Publication<landing_gear_s>			_landing_gear_pub{ORB_ID(landing_gear)};
 	uORB::Publication<vehicle_local_position_setpoint_s>	_local_pos_sp_pub{ORB_ID(vehicle_local_position_setpoint)};	/**< vehicle local position setpoint publication */
@@ -224,11 +221,6 @@ private:
 	void warn_rate_limited(const char *str);
 
 	/**
-	 * Publish attitude.
-	 */
-	void publish_attitude();
-
-	/**
 	 * Adjust the setpoint during landing.
 	 * Thrust is adjusted to support the land-detector during detection.
 	 * @param setpoint gets adjusted based on land-detector state
@@ -277,16 +269,23 @@ private:
 	void		task_main();
 };
 
-MulticopterPositionControl::MulticopterPositionControl() :
+MulticopterPositionControl::MulticopterPositionControl(bool vtol) :
 	SuperBlock(nullptr, "MPC"),
 	ModuleParams(nullptr),
+	_att_sp_pub(vtol ? ORB_ID(mc_virtual_attitude_setpoint) : ORB_ID(vehicle_attitude_setpoint)),
 	_vel_x_deriv(this, "VELD"),
 	_vel_y_deriv(this, "VELD"),
 	_vel_z_deriv(this, "VELD"),
 	_control(this)
 {
+	if (vtol) {
+		// if vehicle is a VTOL we want to enable weathervane capabilities
+		_wv_controller = new WeatherVane();
+	}
+
 	// fetch initial parameter values
 	parameters_update(true);
+
 	// set failsafe hysteresis
 	_failsafe_land_hysteresis.set_hysteresis_time_from(false, LOITER_TIME_BEFORE_DESCEND);
 }
@@ -368,24 +367,7 @@ MulticopterPositionControl::poll_subscriptions()
 	// This is polled for, so all we need to do is a copy now.
 	orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
 
-	if (_vehicle_status_sub.update(&_vehicle_status)) {
-
-		// set correct uORB ID, depending on if vehicle is VTOL or not
-		if (!_attitude_setpoint_id) {
-			if (_vehicle_status.is_vtol) {
-				_attitude_setpoint_id = ORB_ID(mc_virtual_attitude_setpoint);
-
-			} else {
-				_attitude_setpoint_id = ORB_ID(vehicle_attitude_setpoint);
-			}
-		}
-
-		// if vehicle is a VTOL we want to enable weathervane capabilities
-		if (_wv_controller == nullptr && _vehicle_status.is_vtol) {
-			_wv_controller = new WeatherVane();
-		}
-	}
-
+	_vehicle_status_sub.update(&_vehicle_status);
 	_vehicle_land_detected_sub.update(&_vehicle_land_detected);
 	_control_mode_sub.update(&_control_mode);
 	_home_pos_sub.update(&_home_pos);
@@ -696,7 +678,8 @@ MulticopterPositionControl::run()
 			// an attitude setpoint is because for non-flighttask modes
 			// the attitude septoint should come from another source, otherwise
 			// they might conflict with each other such as in offboard attitude control.
-			publish_attitude();
+			_att_sp.timestamp = hrt_absolute_time();
+			_att_sp_pub.publish(_att_sp);
 
 			// if there's any change in landing gear setpoint publish it
 			if (gear.landing_gear != _old_landing_gear_position
@@ -982,19 +965,6 @@ MulticopterPositionControl::reset_setpoint_to_nan(vehicle_local_position_setpoin
 	setpoint.thrust[0] = setpoint.thrust[1] = setpoint.thrust[2] = NAN;
 }
 
-void
-MulticopterPositionControl::publish_attitude()
-{
-	_att_sp.timestamp = hrt_absolute_time();
-
-	if (_att_sp_pub != nullptr) {
-		orb_publish(_attitude_setpoint_id, _att_sp_pub, &_att_sp);
-
-	} else if (_attitude_setpoint_id) {
-		_att_sp_pub = orb_advertise(_attitude_setpoint_id, &_att_sp);
-	}
-}
-
 void MulticopterPositionControl::check_failure(bool task_failure, uint8_t nav_state)
 {
 	if (!task_failure) {
@@ -1066,7 +1036,15 @@ int MulticopterPositionControl::task_spawn(int argc, char *argv[])
 
 MulticopterPositionControl *MulticopterPositionControl::instantiate(int argc, char *argv[])
 {
-	return new MulticopterPositionControl();
+	bool vtol = false;
+
+	if (argc > 1) {
+		if (strcmp(argv[1], "vtol") == 0) {
+			vtol = true;
+		}
+	}
+
+	return new MulticopterPositionControl(vtol);
 }
 
 int MulticopterPositionControl::custom_command(int argc, char *argv[])
@@ -1093,6 +1071,7 @@ logging.
 
 	PRINT_MODULE_USAGE_NAME("mc_pos_control", "controller");
 	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_ARG("vtol", "VTOL mode", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;

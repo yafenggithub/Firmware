@@ -72,8 +72,7 @@ class MulticopterAttitudeControl : public ModuleBase<MulticopterAttitudeControl>
 	public px4::WorkItem
 {
 public:
-	MulticopterAttitudeControl();
-
+	MulticopterAttitudeControl(bool vtol = false);
 	virtual ~MulticopterAttitudeControl();
 
 	/** @see ModuleBase */
@@ -105,7 +104,6 @@ private:
 	void		parameter_update_poll();
 	bool		vehicle_attitude_poll();
 	void		vehicle_motor_limits_poll();
-	void		vehicle_status_poll();
 
 	void		publish_actuator_controls();
 	void		publish_rates_setpoint();
@@ -160,11 +158,8 @@ private:
 	uORB::Publication<landing_gear_s>		_landing_gear_pub{ORB_ID(landing_gear)};
 	uORB::Publication<vehicle_rates_setpoint_s>	_v_rates_sp_pub{ORB_ID(vehicle_rates_setpoint)};			/**< rate setpoint publication */
 
-	orb_advert_t	_actuators_0_pub{nullptr};		/**< attitude actuator controls publication */
-	orb_advert_t	_vehicle_attitude_setpoint_pub{nullptr};
-
-	orb_id_t _actuators_id{nullptr};	/**< pointer to correct actuator controls0 uORB metadata structure */
-	orb_id_t _attitude_sp_id{nullptr};	/**< pointer to correct attitude setpoint uORB metadata structure */
+	uORB::Publication<actuator_controls_s>		_actuators_0_pub;		/**< attitude actuator controls publication */
+	uORB::Publication<vehicle_attitude_setpoint_s>	_vehicle_attitude_setpoint_pub;
 
 	bool		_actuators_0_circuit_breaker_enabled{false};	/**< circuit breaker to suppress output */
 
