@@ -54,7 +54,7 @@ ModuleBaseInterface *get_module_instance(const char *name)
 
 	// search list
 	for (ModuleBaseInterface *module : _px4_modules_list) {
-		const bool name_match = (strcmp(module->get_name(), name) == 0);
+		if (strcmp(module->get_name(), name) == 0) {
 
 		if (name_match) {
 			return module;
