@@ -56,7 +56,7 @@ static void print_usage()
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("modules", "command");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("status", "Print status of parameter system");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("status", "Print status of all running modules in the system");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop-all", "Stop all modules");
 }
 

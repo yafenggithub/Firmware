@@ -62,6 +62,7 @@ ModuleBaseInterface *get_module_instance(const char *name)
 	return nullptr;
 }
 
+// caller needs to hold ModuleBaseInterface::lock_module()
 bool module_running(const char *name)
 {
 	// search list
