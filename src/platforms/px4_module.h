@@ -199,7 +199,7 @@ void modules_stop_all();
  *              // set object (here or from the work_queue() callback)
  *              // call work_queue() (with a custom cycle trampoline)
  *              // optional: wait until object is not null, which means the task got initialized (use a timeout)
- *              // set _task_id to task_id_is_work_queue and return 0
+ *              // instance->set_task_id(task_id_is_work_queue); and return 0
  *              // on error return != 0 (and _task_id must be -1)
  *      }
  */
