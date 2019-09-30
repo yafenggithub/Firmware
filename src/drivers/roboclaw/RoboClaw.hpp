@@ -46,7 +46,6 @@
 #include <poll.h>
 #include <stdio.h>
 #include <termios.h>
-#include <uORB/SubscriptionPollable.hpp>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/wheel_encoders.h>
 #include <uORB/topics/actuator_armed.h>
