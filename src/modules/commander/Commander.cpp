@@ -87,7 +87,6 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/mavlink_log.h>
 #include <uORB/topics/mission.h>
-#include <uORB/topics/parameter_update.h>
 #include <uORB/topics/power_button_state.h>
 #include <uORB/topics/safety.h>
 #include <uORB/topics/subsystem_info.h>
@@ -1297,7 +1296,6 @@ Commander::run()
 	uORB::Subscription cpuload_sub{ORB_ID(cpuload)};
 	uORB::Subscription geofence_result_sub{ORB_ID(geofence_result)};
 	uORB::Subscription land_detector_sub{ORB_ID(vehicle_land_detected)};
-	uORB::Subscription param_changed_sub{ORB_ID(parameter_update)};
 	uORB::Subscription safety_sub{ORB_ID(safety)};
 	uORB::Subscription sp_man_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription subsys_sub{ORB_ID(subsystem_info)};
@@ -1418,14 +1416,14 @@ Commander::run()
 		transition_result_t arming_ret = TRANSITION_NOT_CHANGED;
 
 		/* update parameters */
-		bool params_updated = param_changed_sub.updated();
+		bool params_updated = _parameter_update_sub.updated();
 
 		if (params_updated || param_init_forced) {
+			// clear update
+			parameter_update_s update;
+			_parameter_update_sub.copy(&update);
 
-			/* parameters changed */
-			parameter_update_s param_changed;
-			param_changed_sub.copy(&param_changed);
-
+			// update parameters from storage
 			updateParams();
 
 			/* update parameters */
@@ -1898,6 +1896,7 @@ Commander::run()
 			main_state_before_rtl == commander_state_s::MAIN_STATE_STAB;
 		const bool in_auto_mode =
 			internal_state.main_state == commander_state_s::MAIN_STATE_AUTO_LAND ||
+			internal_state.main_state == commander_state_s::MAIN_STATE_AUTO_RTL ||
 			internal_state.main_state == commander_state_s::MAIN_STATE_AUTO_MISSION ||
 			internal_state.main_state == commander_state_s::MAIN_STATE_AUTO_LOITER;
 
@@ -1978,14 +1977,14 @@ Commander::run()
 			    (status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING || land_detector.landed) &&
 			    (stick_in_lower_left || arm_button_pressed || arm_switch_to_disarm_transition)) {
 
-				if (internal_state.main_state != commander_state_s::MAIN_STATE_MANUAL &&
-				    internal_state.main_state != commander_state_s::MAIN_STATE_ACRO &&
-				    internal_state.main_state != commander_state_s::MAIN_STATE_STAB &&
-				    internal_state.main_state != commander_state_s::MAIN_STATE_RATTITUDE &&
-				    !land_detector.landed) {
-					print_reject_arm("Not disarming! Not yet in manual mode or landed");
+				const bool manual_thrust_mode = internal_state.main_state == commander_state_s::MAIN_STATE_MANUAL
+								|| internal_state.main_state == commander_state_s::MAIN_STATE_ACRO
+								|| internal_state.main_state == commander_state_s::MAIN_STATE_STAB
+								|| internal_state.main_state == commander_state_s::MAIN_STATE_RATTITUDE;
+				const bool rc_wants_disarm = (stick_off_counter == rc_arm_hyst && stick_on_counter < rc_arm_hyst)
+							     || arm_switch_to_disarm_transition;
 
-				} else if ((stick_off_counter == rc_arm_hyst && stick_on_counter < rc_arm_hyst) || arm_switch_to_disarm_transition) {
+				if (rc_wants_disarm && (land_detector.landed || manual_thrust_mode)) {
 					arming_ret = arming_state_transition(&status, safety, vehicle_status_s::ARMING_STATE_STANDBY, &armed,
 									     true /* fRunPreArmChecks */,
 									     &mavlink_log_pub, &status_flags, arm_requirements, hrt_elapsed_time(&commander_boot_timestamp));
@@ -2206,7 +2205,7 @@ Commander::run()
 		}
 
 		/* Check for failure detector status */
-		const bool failure_detector_updated = _failure_detector.update();
+		const bool failure_detector_updated = _failure_detector.update(status);
 
 		if (failure_detector_updated) {
 

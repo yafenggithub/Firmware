@@ -1242,7 +1242,6 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 		odometry.pose_covariance[i] = odom.pose_covariance[i];
 	}
 
-
 	/*
 	 * PX4 expects the body's linear velocity in the local frame,
 	 * the linear velocity is rotated from the odom child_frame to the
@@ -1256,6 +1255,7 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 
 		/* the linear velocities needs to be transformed to the local NED frame */
 		matrix::Vector3<float> linvel_local(R_body_to_local * matrix::Vector3<float>(odom.vx, odom.vy, odom.vz));
+
 		odometry.vx = linvel_local(0);
 		odometry.vy = linvel_local(1);
 		odometry.vz = linvel_local(2);
@@ -1273,7 +1273,7 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 		PX4_ERR("Body frame %u not supported. Unable to publish velocity", odom.child_frame_id);
 	}
 
-	if (odom.frame_id == MAV_FRAME_VISION_NED) {
+	if (odom.frame_id == MAV_FRAME_LOCAL_FRD) {
 		_visual_odometry_pub.publish(odometry);
 
 	} else if (odom.frame_id == MAV_FRAME_MOCAP_NED) {
@@ -2569,9 +2569,15 @@ MavlinkReceiver::Run()
 	hrt_abstime last_send_update = 0;
 
 	while (!_mavlink->_task_should_exit) {
-		// Check for updated parameters.
-		if (_param_update_sub.updated()) {
-			update_params();
+
+		// check for parameter updates
+		if (_parameter_update_sub.updated()) {
+			// clear update
+			parameter_update_s pupdate;
+			_parameter_update_sub.copy(&pupdate);
+
+			// update parameters from storage
+			updateParams();
 		}
 
 		if (poll(&fds[0], 1, timeout) > 0) {
@@ -2717,12 +2723,4 @@ MavlinkReceiver::receive_start(pthread_t *thread, Mavlink *parent)
 	pthread_create(thread, &receiveloop_attr, MavlinkReceiver::start_helper, (void *)parent);
 
 	pthread_attr_destroy(&receiveloop_attr);
-}
-
-void
-MavlinkReceiver::update_params()
-{
-	parameter_update_s param_update;
-	_param_update_sub.update(&param_update);
-	updateParams();
 }
