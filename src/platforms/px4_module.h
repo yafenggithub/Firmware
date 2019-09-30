@@ -112,8 +112,8 @@ public:
 	 */
 	static void unlock_module() { pthread_mutex_unlock(&px4_modules_mutex); }
 
-	int task_id() const { return _task_id; }
-	void set_task_id(int id) { _task_id = id; }
+	int task_id() const { return _task_id.load(); }
+	void set_task_id(int id) { _task_id.store(id); }
 
 	/**
 	 * @brief Main loop method for modules running in their own thread. Called from run_trampoline().
@@ -121,7 +121,7 @@ public:
 	 */
 	virtual void run() {};
 
-	virtual bool running() { return (_task_id != -1) && !should_exit(); }
+	bool running() { return (task_id() != -1); }
 
 	/**
 	 * @brief Checks if the module should stop (used within the module thread).
@@ -137,7 +137,7 @@ protected:
 	px4::atomic_bool _task_should_exit{false};
 
 	/** @var _task_id The task handle: -1 = invalid, otherwise task is assumed to be running. */
-	int _task_id{-1};
+	px4::atomic_int _task_id{-1};
 
 };
 
