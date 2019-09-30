@@ -90,7 +90,7 @@ public:
 
 	void Run() override;
 
-	void request_stop() override { _task_should_exit.store(true); ScheduleNow(); }
+	void request_stop() override { ModuleBaseInterface::request_stop(); ScheduleNow(); }
 
 	bool init();
 
