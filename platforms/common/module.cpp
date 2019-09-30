@@ -55,8 +55,6 @@ ModuleBaseInterface *get_module_instance(const char *name)
 	// search list
 	for (ModuleBaseInterface *module : _px4_modules_list) {
 		if (strcmp(module->get_name(), name) == 0) {
-
-		if (name_match) {
 			return module;
 		}
 	}
@@ -158,7 +156,6 @@ void module_exit_and_cleanup(const char *name)
 		delete object;
 	}
 
-	//_task_id = -1; // Signal a potentially waiting thread for the module to exit that it can continue.
 	ModuleBaseInterface::unlock_module();
 }
 

@@ -240,7 +240,6 @@ public:
 		}
 
 		if (strcmp(argv[1], "status") == 0) {
-			// return module_status(get_name_static());
 			return status_command();
 		}
 
