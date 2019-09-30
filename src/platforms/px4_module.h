@@ -247,7 +247,7 @@ public:
 			return stop_command();
 		}
 
-		lock_module(); // Lock here, as the method could access _object.
+		lock_module(); // Lock here, as the method could access object.
 		int ret = T::custom_command(argc - 1, argv + 1);
 		unlock_module();
 
@@ -355,7 +355,7 @@ protected:
 	static void exit_and_cleanup() { module_exit_and_cleanup(get_name_static()); }
 
 	/**
-	 * @brief Waits until _object is initialized, (from the new thread). This can be called from task_spawn().
+	 * @brief Waits until object is initialized, (from the new thread). This can be called from task_spawn().
 	 * @return Returns 0 iff successful, -1 on timeout or otherwise.
 	 */
 	static int wait_until_running() { return module_wait_until_running(get_name_static()); }
