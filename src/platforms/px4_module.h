@@ -279,7 +279,6 @@ public:
 		if (object) {
 			object->set_task_id(px4_getpid());
 
-			// run
 			object->run();
 
 		} else {
