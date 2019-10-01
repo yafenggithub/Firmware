@@ -50,7 +50,8 @@
 
 #ifdef __cplusplus
 
-#include <containers/BlockingList.hpp>
+#include <containers/List.hpp>
+#include <containers/LockGuard.hpp>
 
 #include <cstring>
 
@@ -58,7 +59,7 @@
 static constexpr const int task_id_is_work_queue = -2;
 
 class ModuleBaseInterface;
-extern BlockingList<ModuleBaseInterface *> _px4_modules_list;
+extern List<ModuleBaseInterface *> _px4_modules_list;
 
 /**
  * @brief This mutex protects against race conditions during startup & shutdown of modules.
@@ -75,12 +76,14 @@ public:
 		_module_name(name)
 	{
 		// automatically add module to list
+		LockGuard lg(px4_modules_mutex);
 		_px4_modules_list.add(this);
 	}
 
 	virtual ~ModuleBaseInterface()
 	{
 		// automatically remove module to list
+		LockGuard lg(px4_modules_mutex);
 		_px4_modules_list.remove(this);
 	}
 
@@ -101,16 +104,6 @@ public:
 	 * @brief Tells the module to stop (used from outside or inside the module thread).
 	 */
 	virtual void request_stop() { _task_should_exit.store(true); }
-
-	/**
-	 * @brief lock_module Mutex to lock the module thread.
-	 */
-	static void lock_module() { pthread_mutex_lock(&px4_modules_mutex); }
-
-	/**
-	 * @brief unlock_module Mutex to unlock the module thread.
-	 */
-	static void unlock_module() { pthread_mutex_unlock(&px4_modules_mutex); }
 
 	int task_id() const { return _task_id.load(); }
 	void set_task_id(int id) { _task_id.store(id); }
@@ -247,9 +240,8 @@ public:
 			return stop_command();
 		}
 
-		lock_module(); // Lock here, as the method could access object.
+		//LockGuard lg(px4_modules_mutex); // Lock here, as the method could access object.
 		int ret = T::custom_command(argc - 1, argv + 1);
-		unlock_module();
 
 		return ret;
 	}
@@ -301,21 +293,20 @@ public:
 	static int start_command_base(int argc, char *argv[])
 	{
 		int ret = 0;
-		lock_module();
 
 		if (is_running()) {
 			ret = -1;
 			PX4_ERR("Task already running");
 
 		} else {
-			ret = T::task_spawn(argc, argv);
-
-			if (ret < 0) {
-				PX4_ERR("Task start failed (%i)", ret);
+			if (T::task_spawn(argc, argv) == 0) {
+				return wait_until_running();
 			}
+
+			// otherwise the task failed to start
+			ret = -1;
 		}
 
-		unlock_module();
 		return ret;
 	}
 

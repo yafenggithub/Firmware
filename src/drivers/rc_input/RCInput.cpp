@@ -163,9 +163,6 @@ RCInput::task_spawn(int argc, char *argv[])
 			return ret;
 		}
 
-		// we need to wait, otherwise 'device' could go out of scope while still being accessed
-		wait_until_running();
-
 	} else {
 
 		/* start the IO interface task */

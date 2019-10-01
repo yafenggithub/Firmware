@@ -572,11 +572,6 @@ PWMSim::task_spawn(int argc, char *argv[])
 		return -errno;
 	}
 
-	// wait until task is up & running (the mode_* commands depend on it)
-	if (wait_until_running() < 0) {
-		return -1;
-	}
-
 	return PX4_OK;
 }
 

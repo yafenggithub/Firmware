@@ -57,12 +57,6 @@ int SendEvent::task_spawn(int argc, char *argv[])
 		return ret;
 	}
 
-	ret = wait_until_running();
-
-	if (ret < 0) {
-		return ret;
-	}
-
 	return 0;
 }
 

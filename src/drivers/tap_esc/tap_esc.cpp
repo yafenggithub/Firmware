@@ -731,11 +731,6 @@ int TAP_ESC::task_spawn(int argc, char *argv[])
 		return PX4_ERROR;
 	}
 
-	// wait until task is up & running
-	if (wait_until_running() < 0) {
-		return -1;
-	}
-
 	return PX4_OK;
 }
 
