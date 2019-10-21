@@ -56,6 +56,7 @@ px4_add_board(
 		mavlink
 		navigator
 		battery_status
+		rc_update
 		sensors
 		vmount
 		airspeed_selector

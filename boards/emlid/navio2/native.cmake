@@ -49,6 +49,7 @@ px4_add_board(
 		mc_pos_control
 		navigator
 		battery_status
+		rc_update
 		sensors
 		sih
 		#simulator

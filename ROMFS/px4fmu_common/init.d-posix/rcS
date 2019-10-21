@@ -209,6 +209,7 @@ simulator start -c $simulator_tcp_port
 tone_alarm start
 gpssim start
 sensors start
+rc_update start
 commander start
 navigator start
 

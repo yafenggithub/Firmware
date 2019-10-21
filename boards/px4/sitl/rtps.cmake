@@ -41,6 +41,7 @@ px4_add_board(
 		micrortps_bridge
 		navigator
 		replay
+		rc_update
 		sensors
 		simulator
 		vmount
