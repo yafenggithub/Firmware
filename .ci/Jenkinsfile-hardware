@@ -189,7 +189,7 @@ pipeline {
                 stage("tests") {
                   steps {
                     // run tests
-                    sh './Tools/HIL/run_tests.py --device `find /dev/serial -name *usb-FTDI_*`'
+                    sh 'SERIAL_PORT=`find /dev/serial -name *usb-FTDI_*` python Tools/HIL/test.py --verbose'
                   }
                 }
                 stage("stop modules") {
@@ -311,7 +311,7 @@ pipeline {
                 stage("tests") {
                   steps {
                     // run tests
-                    sh './Tools/HIL/run_tests.py --device `find /dev/serial -name *usb-FTDI_*`'
+                    sh 'SERIAL_PORT=`find /dev/serial -name *usb-FTDI_*` python Tools/HIL/test.py --verbose'
                   }
                 }
                 stage("stop modules") {
@@ -434,7 +434,7 @@ pipeline {
                 stage("tests") {
                   steps {
                     // run tests
-                    sh './Tools/HIL/run_tests.py --device `find /dev/serial -name *usb-FTDI_*`'
+                    sh 'SERIAL_PORT=`find /dev/serial -name *usb-FTDI_*` python Tools/HIL/test.py --verbose'
                   }
                 }
                 stage("stop modules") {
@@ -558,7 +558,7 @@ pipeline {
                 stage("tests") {
                   steps {
                     // run tests
-                    sh './Tools/HIL/run_tests.py --device `find /dev/serial -name *usb-FTDI_*`'
+                    sh 'SERIAL_PORT=`find /dev/serial -name *usb-FTDI_*` python Tools/HIL/test.py --verbose'
                   }
                 }
                 stage("stop modules") {
