@@ -38,8 +38,7 @@
 using namespace matrix;
 using namespace ControlMath;
 
-
-TEST(ControlMathTest, ThrottleAttitudeMapping)
+TEST(ControlMathTest, ThrustAttitudeMapping)
 {
 	/* expected: zero roll, zero pitch, zero yaw, full thr mag
 	 * reason: thrust pointing full upward */
@@ -51,6 +50,7 @@ TEST(ControlMathTest, ThrottleAttitudeMapping)
 	EXPECT_EQ(att.pitch_body, 0);
 	EXPECT_EQ(att.yaw_body, 0);
 	EXPECT_EQ(att.thrust_body[2], -1.f);
+	EXPECT_EQ(Quatf(att.q_d).dcm_z(), -thr.normalized());
 
 	/* expected: same as before but with 90 yaw
 	 * reason: only yaw changed */
@@ -60,16 +60,23 @@ TEST(ControlMathTest, ThrottleAttitudeMapping)
 	EXPECT_EQ(att.pitch_body, 0);
 	EXPECT_EQ(att.yaw_body, M_PI_2_F);
 	EXPECT_EQ(att.thrust_body[2], -1.f);
+	EXPECT_EQ(Quatf(att.q_d).dcm_z(), -thr.normalized());
 
 	/* expected: same as before but roll 180
 	 * reason: thrust points straight down and order Euler
 	 * order is: 1. roll, 2. pitch, 3. yaw */
 	thr = Vector3f(0.0f, 0.0f, 1.0f);
 	thrustToAttitude(thr, yaw, att);
-	EXPECT_NEAR(att.roll_body, -M_PI_F, 1e-4);
+	EXPECT_NEAR(att.roll_body, M_PI_F, 1e-4);
 	EXPECT_EQ(att.pitch_body, 0);
-	EXPECT_EQ(att.yaw_body, M_PI_2_F);
 	EXPECT_EQ(att.thrust_body[2], -1.f);
+	EXPECT_EQ(Quatf(att.q_d).dcm_z(), -thr.normalized());
+
+
+	thr = Vector3f(0.f, .5f, -.5f);
+	yaw = 1.f;
+	thrustToAttitude(thr, yaw, att);
+	EXPECT_EQ(Quatf(att.q_d).dcm_z(), -thr.normalized());
 }
 
 TEST(ControlMathTest, ConstrainXYPriorities)
