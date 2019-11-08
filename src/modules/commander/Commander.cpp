@@ -558,7 +558,15 @@ Commander::Commander() :
 	_failure_detector(this)
 {
 	_auto_disarm_landed.set_hysteresis_time_from(false, 10_s);
-	_auto_disarm_killed.set_hysteresis_time_from(false, 5_s);
+
+	// Check if kill switch should immedietely disarm vehicle
+	if (_param_com_kill_disarm.get()) {
+		_auto_disarm_killed.set_hysteresis_time_from(false, 0_s);
+
+	} else {
+		_auto_disarm_killed.set_hysteresis_time_from(false, 5_s);
+	}
+
 	_battery_sub = orb_subscribe(ORB_ID(battery_status));
 
 
@@ -2257,6 +2265,12 @@ Commander::run()
 					if (!_failure_detector_termination_printed) {
 						mavlink_log_critical(&mavlink_log_pub, "Attitude failure detected! Enforcing failsafe");
 						_failure_detector_termination_printed = true;
+
+						// Jake: added logic here
+						armed.force_failsafe = true;
+
+						mavlink_log_critical(&mavlink_log_pub, "Critical failure detected: terminate flight");
+						set_tune_override(TONE_PARACHUTE_RELEASE_TUNE);
 					}
 
 				}

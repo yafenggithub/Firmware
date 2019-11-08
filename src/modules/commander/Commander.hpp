@@ -129,8 +129,9 @@ private:
 		(ParamInt<px4::params::COM_TAS_FS_T2>) _tas_use_start_delay,
 		(ParamInt<px4::params::COM_ASPD_FS_ACT>) _airspeed_fail_action,
 		(ParamFloat<px4::params::COM_ASPD_STALL>) _airspeed_stall,
-		(ParamInt<px4::params::COM_ASPD_FS_DLY>) _airspeed_rtl_delay
+		(ParamInt<px4::params::COM_ASPD_FS_DLY>) _airspeed_rtl_delay,
 
+		(ParamInt<px4::params::COM_KILL_DISARM>) _param_com_kill_disarm
 	)
 
 	const int64_t POSVEL_PROBATION_MIN = 1_s;	/**< minimum probation duration (usec) */

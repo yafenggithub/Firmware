@@ -130,7 +130,7 @@ int LidarLiteI2C::init()
 				 &_orb_class_instance, ORB_PRIO_LOW);
 
 	if (_distance_sensor_topic == nullptr) {
-		PX4_DEBUG("failed to create distance_sensor object. Did you start uOrb?");
+		PX4_ERR("failed to create distance_sensor object. Did you start uOrb?");
 	}
 
 	ret = OK;
@@ -157,19 +157,7 @@ int LidarLiteI2C::write_reg(uint8_t reg, uint8_t val)
  */
 int LidarLiteI2C::lidar_transfer(const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len)
 {
-	if (send != nullptr && send_len > 0) {
-		int ret = transfer(send, send_len, nullptr, 0);
-
-		if (ret != OK) {
-			return ret;
-		}
-	}
-
-	if (recv != nullptr && recv_len > 0) {
-		return transfer(nullptr, 0, recv, recv_len);
-	}
-
-	return OK;
+	return transfer(send, send_len, recv, recv_len);
 }
 
 int LidarLiteI2C::probe()
@@ -198,7 +186,7 @@ int LidarLiteI2C::probe()
 				goto ok;
 			}
 
-			PX4_DEBUG("probe failed unit_id=0x%02x\n",
+			PX4_ERR("probe failed unit_id=0x%02x\n",
 				  (unsigned)_unit_id);
 
 		} else {
@@ -212,7 +200,7 @@ int LidarLiteI2C::probe()
 				goto ok;
 			}
 
-			PX4_DEBUG("probe failed hw_version=0x%02x sw_version=0x%02x\n",
+			PX4_ERR("probe failed hw_version=0x%02x sw_version=0x%02x\n",
 				  (unsigned)_hw_version,
 				  (unsigned)_sw_version);
 		}
@@ -224,7 +212,7 @@ int LidarLiteI2C::probe()
 
 ok:
 	_retries = 3;
-	return reset_sensor();
+	return OK;
 }
 
 int LidarLiteI2C::ioctl(device::file_t *filp, int cmd, unsigned long arg)
@@ -315,12 +303,11 @@ int LidarLiteI2C::measure()
 	/*
 	 * Send the command to begin a measurement.
 	 */
-	const uint8_t cmd[2] = { LL40LS_MEASURE_REG, LL40LS_MSRREG_ACQUIRE };
-	ret = lidar_transfer(cmd, sizeof(cmd), nullptr, 0);
+	ret = write_reg(LL40LS_MEASURE_REG, LL40LS_MSRREG_ACQUIRE);
 
 	if (OK != ret) {
 		perf_count(_comms_errors);
-		PX4_DEBUG("i2c::transfer returned %d", ret);
+		PX4_ERR("i2c::transfer returned %d", ret);
 
 		// if we are getting lots of I2C transfer errors try
 		// resetting the sensor
@@ -418,7 +405,7 @@ int LidarLiteI2C::collect()
 			  read before it is ready, so only consider it
 			  an error if more than 100ms has elapsed.
 			 */
-			PX4_DEBUG("error reading from sensor: %d", ret);
+			PX4_ERR("error reading from sensor: %d", ret);
 			perf_count(_comms_errors);
 
 			if (perf_event_count(_comms_errors) % 10 == 0) {
@@ -592,7 +579,7 @@ void LidarLiteI2C::cycle()
 
 		/* try a collection */
 		if (OK != collect()) {
-			PX4_DEBUG("collection error");
+			PX4_ERR("collection error");
 
 			/* if we've been waiting more than 200ms then
 			   send a new acquire */
@@ -624,7 +611,7 @@ void LidarLiteI2C::cycle()
 	if (_collect_phase == false) {
 		/* measurement phase */
 		if (OK != measure()) {
-			PX4_DEBUG("measure error");
+			PX4_ERR("measure error");
 
 		} else {
 			/* next phase is collection. Don't switch to

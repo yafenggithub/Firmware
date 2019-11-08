@@ -907,3 +907,14 @@ PARAM_DEFINE_INT32(COM_ASPD_FS_ACT, 0);
  */
 PARAM_DEFINE_INT32(COM_ASPD_FS_DLY, 0);
 
+/**
+ * Enable immediate disarm on kill
+ *
+ * If set, engaging the kill switch will immediately disarm the vehicle. Otherwise
+ * the vehicle disarms after 5 seconds.
+ *
+ * @boolean
+ * @reboot_required true
+ * @group Commander
+ */
+PARAM_DEFINE_INT32(COM_KILL_DISARM, 0);
