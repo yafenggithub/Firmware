@@ -100,6 +100,9 @@ RTL::find_RTL_destination()
 		}
 	}
 
+	// do not consider rally point if RTL_TYPE, so exit function and use either home or mission landing
+	if (rtl_type() == RTL_MISSION) { return;}
+
 	// compare to safe landing positions
 	mission_safe_point_s closest_safe_point {} ;
 	mission_stats_entry_s stats;
