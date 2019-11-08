@@ -28,3 +28,7 @@ airspeed_selector start
 # Multicopter for now until we have something for VTOL
 #
 land_detector start vtol
+
+# Wait 2s before airspeed selector startup (to make sure airspeed sensor drivers are up when we initialize it)
+usleep 2000000
+airspeed_selector start
