@@ -146,7 +146,7 @@ ControlAllocator::parameters_updated()
 		break;
 	}
 
-	// Set 0 effectieness for actuators that are disabled (act_min >= act_max)
+	// Set 0 effectiveness for actuators that are disabled (act_min >= act_max)
 	for (size_t j = 0; j < NUM_ACTUATORS; j++) {
 		if (actuator_min(j) >= actuator_max(j)) {
 			for (size_t i = 0; i < NUM_AXES; i++) {
