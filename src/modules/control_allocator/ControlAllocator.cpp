@@ -86,7 +86,7 @@ ControlAllocator::parameters_updated()
 {
 	// Allocation method
 	// Do this first: in case a new method is loaded, it will be configured below
-	update_allocation_method();
+	// update_allocation_method();
 
 	// Minimum actuator values
 	matrix::Vector<float, NUM_ACTUATORS> actuator_min;

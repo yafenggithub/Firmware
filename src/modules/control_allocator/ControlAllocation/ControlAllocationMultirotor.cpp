@@ -47,7 +47,26 @@ ControlAllocationMultirotor::setEffectivenessMatrix(const matrix::Matrix<float, 
 	_B = B;
 
 	// Pseudo-inverse
-	matrix::Matrix<float, NUM_ACTUATORS, NUM_AXES> A = matrix::geninv(_B);
+	// matrix::Matrix<float, NUM_ACTUATORS, NUM_AXES> A = matrix::geninv(_B);
+	const float A_quad_w[16][6] = {
+		{ -0.495383f,  0.707107f,  0.765306f,  0.0f, 0.0f, -1.000000f },
+		{  0.495383f, -0.707107f,  1.000000f,  0.0f, 0.0f, -1.000000f },
+		{  0.495383f,  0.707107f, -0.765306f,  0.0f, 0.0f, -1.000000f },
+		{ -0.495383f, -0.707107f, -1.000000f,  0.0f, 0.0f, -1.000000f },
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
+	};
+	matrix::Matrix<float, 16, 6> A = matrix::Matrix<float, 16, 6>(A_quad_w);
 
 	// Convert A to MultirotorMixer::Rotor
 	MultirotorMixer::Rotor rotors[NUM_ACTUATORS];

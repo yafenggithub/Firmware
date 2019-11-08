@@ -45,7 +45,8 @@ void
 ControlAllocationSimple::setEffectivenessMatrix(const matrix::Matrix<float, NUM_AXES, NUM_ACTUATORS> &B)
 {
 	_B = B;
-	_A = matrix::geninv(_B);
+
+	// _A = matrix::geninv(_B);
 
 	// TODO: measure exec time for pseudo-inverse of full 6x16 matrix, and compare with
 	// faster alternative below (possible only if number of actuators is known)
@@ -56,6 +57,26 @@ ControlAllocationSimple::setEffectivenessMatrix(const matrix::Matrix<float, NUM_
 	// - create a smaller matrix with the non-0 columns
 	// - pseudo inverse
 	// - fill A by rows with pseudo inverse of non-zero columns
+
+	const float A_quad_w[16][6] = {
+		{ -0.495383f,  0.707107f,  0.765306f,  0.0f, 0.0f, -1.000000f },
+		{  0.495383f, -0.707107f,  1.000000f,  0.0f, 0.0f, -1.000000f },
+		{  0.495383f,  0.707107f, -0.765306f,  0.0f, 0.0f, -1.000000f },
+		{ -0.495383f, -0.707107f, -1.000000f,  0.0f, 0.0f, -1.000000f },
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}
+	};
+	_A = matrix::Matrix<float, 16, 6>(A_quad_w);
 }
 
 
