@@ -54,7 +54,6 @@
                 }
         },
         "cortex-debug.enableTelemetry": false,
-        "C_Cpp.clang_format_fallbackStyle": "none",
         "C_Cpp.configurationWarnings": "Disabled",
         "C_Cpp.default.cppStandard": "c++11",
         "C_Cpp.default.cStandard": "c99",
